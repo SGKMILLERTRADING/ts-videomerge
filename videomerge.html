@@ -135,23 +135,26 @@ input[type=file]{display:none}
 }
 </style>
 
-<!-- Firebase SDK -->
+<!-- Firebase SDK (isolated so errors don't break the app) -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyCpe6sV8xZSv2uBDp0tXB91ylvERaBPPTA",
-    authDomain: "sgkmillertrading-4514c.firebaseapp.com",
-    projectId: "sgkmillertrading-4514c",
-    storageBucket: "sgkmillertrading-4514c.firebasestorage.app",
-    messagingSenderId: "195492359672",
-    appId: "1:195492359672:web:bfc8348d9c3f4789127a0d"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  window.firebaseApp = app;
+  try {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js");
+    const { getAnalytics } = await import("https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js");
+    const firebaseConfig = {
+      apiKey: "AIzaSyCpe6sV8xZSv2uBDp0tXB91ylvERaBPPTA",
+      authDomain: "sgkmillertrading-4514c.firebaseapp.com",
+      projectId: "sgkmillertrading-4514c",
+      storageBucket: "sgkmillertrading-4514c.firebasestorage.app",
+      messagingSenderId: "195492359672",
+      appId: "1:195492359672:web:bfc8348d9c3f4789127a0d"
+    };
+    const app = initializeApp(firebaseConfig);
+    getAnalytics(app);
+    window.firebaseApp = app;
+    console.log('Firebase ready.');
+  } catch(e) {
+    console.warn('Firebase unavailable (app still works):', e.message);
+  }
 </script>
 
 </head>
@@ -263,9 +266,14 @@ const cx = mc.getContext('2d');
 
 // ── File Inputs ─────────────────────────────────────────────
 document.getElementById('f-add').onchange = e => {
-  for (let file of e.target.files) addClip(file);
+  if (!e.target.files) return;
+  Array.from(e.target.files).forEach(file => addClip(file));
+  e.target.value = ''; // Reset so the same file can be added again
 };
-document.getElementById('fa').onchange = e => loadCustomAudio(e.target.files[0]);
+document.getElementById('fa').onchange = e => {
+  loadCustomAudio(e.target.files[0]);
+  e.target.value = '';
+};
 
 function fmtDur(s) { 
   if (isNaN(s) || !isFinite(s)) return '0:00';
