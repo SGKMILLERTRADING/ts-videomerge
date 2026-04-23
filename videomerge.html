@@ -267,7 +267,10 @@ document.getElementById('f-add').onchange = e => {
 };
 document.getElementById('fa').onchange = e => loadCustomAudio(e.target.files[0]);
 
-function fmtDur(s) { return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+function fmtDur(s) { 
+  if (isNaN(s) || !isFinite(s)) return '0:00';
+  return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; 
+}
 
 function addClip(file) {
   if (!file) return;
@@ -282,12 +285,19 @@ function addClip(file) {
   clips.push(clip);
   
   vid.onloadedmetadata = () => {
-    clip.duration = vid.duration;
-    clip.end = vid.duration;
+    clip.duration = vid.duration || 0;
+    if (clip.end === 0) clip.end = clip.duration;
     vid.currentTime = 0.5; // for thumbnail
     renderTimeline();
     checkReady();
   };
+  
+  // Force the browser to load metadata even if the element is not in the DOM
+  vid.load();
+  
+  // Render an empty state immediately so the user sees the box
+  renderTimeline();
+  checkReady();
 }
 
 function renderTimeline() {
