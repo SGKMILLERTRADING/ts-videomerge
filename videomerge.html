@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T&S VideoMerge</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg: #09090b;
+  --s1: #18181b;
+  --s2: #27272a;
+  --s3: #3f3f46;
+  --bd: #27272a;
+  --bd2: #3f3f46;
+  --acc: #ec4899;
+  --acc2: #f472b6;
+  --acc-lo: rgba(236, 72, 153, 0.15);
+  --cyan: #10b981;
+  --text: #ffffff;
+  --t2: #a1a1aa;
+  --t3: #71717a;
+  --ok: #10b981;
+  --err: #f43f5e;
+  --r: 8px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',Courier,monospace;min-height:100vh}
+::selection{background:rgba(236,72,153,.3)}
+
+/* Header */
+header{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--bd); background:var(--s1)}
+.logo{font-size:16px;font-weight:700;letter-spacing:2px;color:var(--acc)}
+.logo em{color:var(--cyan);font-style:normal}
+.pill{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;background:var(--s2);border:1px solid var(--bd);border-radius:4px;padding:2px 8px;color:var(--t2)}
+
+main{max-width:1080px;margin:0 auto;padding:24px}
+
+/* Section labels */
+.lbl{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--cyan);margin-bottom:12px; font-weight: bold;}
+
+/* Timeline Track */
+.timeline-track{display:flex;gap:16px;margin-bottom:24px;overflow-x:auto;padding-bottom:8px;}
+.timeline-clip{flex:1;min-width:300px;border:1px dashed var(--bd);border-radius:var(--r);background:var(--s1);padding:16px;position:relative;transition:all 0.2s;}
+.timeline-clip.loaded{border-style:solid;border-color:var(--acc);background:var(--s2);}
+.timeline-clip:hover:not(.loaded){border-color:var(--acc);background:var(--s2);}
+
+.clip-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;gap:8px;cursor:pointer;}
+.timeline-clip.loaded .clip-ph{display:none;}
+.vnum{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);font-weight:700}
+.zone-ico{width:36px;height:36px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:14px}
+.zone-hint{font-size:12px;color:var(--t3)}
+
+.clip-thumb{width:100%;height:130px;background:#000;border-radius:6px;object-fit:contain;display:none;margin-bottom:12px;}
+.timeline-clip.loaded .clip-thumb{display:block;}
+.clip-info{font-size:11px;color:var(--text);text-align:center;margin-bottom:16px;line-height:1.6;}
+.swap-zone{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text);background:var(--s2);border:1px solid var(--bd);border-radius:50%;width:44px;height:44px;cursor:pointer;align-self:center;order:2;transition:all 0.2s;flex-shrink:0;user-select:none;}
+.swap-zone:hover{background:var(--acc);color:#fff;border-color:var(--acc);transform:scale(1.1);}
+
+/* Trim UI */
+.trim-ui{display:none;flex-direction:column;gap:10px;background:var(--s1);padding:12px;border-radius:6px;border:1px solid var(--bd);}
+.timeline-clip.loaded .trim-ui{display:flex;}
+
+/* Panels */
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.panel{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px}
+.ptitle{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:14px; font-weight:bold;}
+
+/* Source options */
+.src-list{display:flex;flex-direction:column;gap:7px}
+.src-opt{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--bd);border-radius:6px;cursor:pointer;transition:all .15s;font-size:12px;color:var(--t2);user-select:none}
+.src-opt:hover{border-color:var(--bd2);background:var(--s2)}
+.src-opt.on{border-color:var(--acc);background:var(--acc-lo);color:var(--text)}
+.sdot{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--t3);flex-shrink:0;transition:all .15s}
+.src-opt.on .sdot{background:var(--acc);border-color:var(--acc)}
+
+.custom-upload{display:none;margin-top:8px;padding:9px 12px;background:var(--s2);border:1px dashed var(--bd);border-radius:6px;font-size:11px;color:var(--t3);cursor:pointer;text-align:center;transition:border-color .15s}
+.custom-upload:hover{border-color:var(--acc);color:var(--text);}
+.custom-upload.show{display:block}
+#customName{color:var(--acc);font-size:11px;margin-top:4px;min-height:14px}
+
+/* Sliders */
+.srow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.srow:last-child{margin-bottom:0}
+.srow label{font-size:11px;color:var(--t2);width:52px;flex-shrink:0}
+.srow input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--bd2);outline:none;cursor:pointer}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--acc);cursor:pointer;border:2px solid var(--bg)}
+.srow input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--acc);cursor:pointer;border:2px solid var(--bg)}
+.sval{font-size:11px;color:var(--acc);width:48px;text-align:right;flex-shrink:0}
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0 14px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--bd)}
+.divider span{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3)}
+
+/* Preview area */
+.preview-wrap{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:20px}
+.canvas-box{background:#000;border-radius:6px;overflow:hidden;min-height:260px;display:flex;align-items:center;justify-content:center;position:relative;border:1px solid var(--bd)}
+.canvas-empty{font-size:12px;color:var(--t3);text-align:center;line-height:1.8;padding:20px}
+#mc{max-width:100%;display:none;max-height:450px}
+
+/* Progress */
+.prog-wrap{margin-top:14px;display:none}
+.prog-track{height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--acc);width:0%;transition:width .2s;border-radius:2px}
+.prog-label{font-size:10px;color:var(--t3);text-align:right;margin-top:6px}
+
+/* Status bar */
+.status{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 14px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;font-size:12px;color:var(--text)}
+.sdot2{width:8px;height:8px;border-radius:50%;background:var(--t3);flex-shrink:0}
+.sdot2.live{background:var(--ok);animation:blink 1.2s infinite}
+.sdot2.rec{background:var(--err);animation:blink .7s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Buttons */
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.btn{padding:10px 20px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:1px solid var(--bd);background:var(--s2);color:var(--text);transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn:hover:not(:disabled){border-color:var(--cyan);background:var(--s3);}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn-p:hover:not(:disabled){background:var(--acc2);border-color:var(--acc2);color:#fff;box-shadow:0 0 10px var(--acc-lo)}
+.btn-ok{border-color:var(--ok);color:var(--ok)}
+.btn-ok:hover:not(:disabled){background:rgba(74,222,128,.15)}
+.btn-err{border-color:var(--err);color:var(--err);display:none}
+.btn-err:hover:not(:disabled){background:rgba(248,113,113,.15)}
+
+input[type=file]{display:none}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  header { padding: 12px 16px; }
+  main { padding: 16px; }
+  .timeline-track { flex-direction: column; overflow-x: visible; }
+  .swap-zone { transform: rotate(90deg); margin: 8px 0; }
+  .swap-zone:hover { transform: rotate(90deg) scale(1.1); }
+  .panels { grid-template-columns: 1fr; gap: 20px; }
+  .canvas-box { min-height: 200px; }
+  .btns { flex-direction: column; width: 100%; }
+  .btn { width: 100%; justify-content: center; padding: 14px 20px; }
+}
+</style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpe6sV8xZSv2uBDp0tXB91ylvERaBPPTA",
+    authDomain: "sgkmillertrading-4514c.firebaseapp.com",
+    projectId: "sgkmillertrading-4514c",
+    storageBucket: "sgkmillertrading-4514c.firebasestorage.app",
+    messagingSenderId: "195492359672",
+    appId: "1:195492359672:web:bfc8348d9c3f4789127a0d"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  window.firebaseApp = app;
+  console.log("Firebase Initialized Successfully.");
+</script>
+
+</head>
+<body>
+
+<header>
+  <div class="logo">T&S VIDEO<em>MERGE</em></div>
+  <div class="pill">Studio Timeline</div>
+</header>
+
+<main>
+
+<div class="lbl">01 — Timeline & Edit</div>
+<div class="timeline-track">
+  
+  <div class="timeline-clip" id="z1" style="order:1">
+    <div class="clip-ph" id="ph1" onclick="document.getElementById('f1').click()">
+      <div class="zone-ico">▶</div>
+      <div class="vnum">Video 1</div>
+      <div class="zone-hint">Click or drop video</div>
+    </div>
+    <video class="clip-thumb" id="v1" playsinline preload="metadata"></video>
+    <div class="clip-info" id="i1"></div>
+    <div class="trim-ui" id="trim1">
+      <div class="srow">
+        <label>Start</label>
+        <input type="range" id="start1" min="0" max="100" value="0" step="0.1" oninput="onTrim(1)">
+        <div class="sval" id="start1v">0.0s</div>
+      </div>
+      <div class="srow">
+        <label>End</label>
+        <input type="range" id="end1" min="0" max="100" value="100" step="0.1" oninput="onTrim(1)">
+        <div class="sval" id="end1v">0.0s</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="swap-zone" onclick="swapOrder()" title="Swap order">⇄</div>
+
+  <div class="timeline-clip" id="z2" style="order:3">
+    <div class="clip-ph" id="ph2" onclick="document.getElementById('f2').click()">
+      <div class="zone-ico">▶</div>
+      <div class="vnum">Video 2</div>
+      <div class="zone-hint">Click or drop video</div>
+    </div>
+    <video class="clip-thumb" id="v2" playsinline preload="metadata"></video>
+    <div class="clip-info" id="i2"></div>
+    <div class="trim-ui" id="trim2">
+      <div class="srow">
+        <label>Start</label>
+        <input type="range" id="start2" min="0" max="100" value="0" step="0.1" oninput="onTrim(2)">
+        <div class="sval" id="start2v">0.0s</div>
+      </div>
+      <div class="srow">
+        <label>End</label>
+        <input type="range" id="end2" min="0" max="100" value="100" step="0.1" oninput="onTrim(2)">
+        <div class="sval" id="end2v">0.0s</div>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+<input type="file" id="f1" accept="video/*">
+<input type="file" id="f2" accept="video/*">
+<input type="file" id="fa" accept="audio/*,video/*">
+
+<div class="panels">
+  <!-- Audio Source -->
+  <div class="panel">
+    <div class="ptitle">Audio Source</div>
+    <div class="src-list">
+      <div class="src-opt on" data-v="v1" onclick="setAudioSrc('v1',this)"><div class="sdot"></div>Video 1 audio</div>
+      <div class="src-opt" data-v="v2" onclick="setAudioSrc('v2',this)"><div class="sdot"></div>Video 2 audio</div>
+      <div class="src-opt" data-v="both" onclick="setAudioSrc('both',this)"><div class="sdot"></div>Original per video</div>
+      <div class="src-opt" data-v="custom" onclick="setAudioSrc('custom',this)"><div class="sdot"></div>Custom audio file</div>
+      <div class="src-opt" data-v="mute" onclick="setAudioSrc('mute',this)"><div class="sdot"></div>No audio (mute)</div>
+    </div>
+    <div class="custom-upload" id="caBtn" onclick="document.getElementById('fa').click()">
+      ↑ Click to upload audio / video file
+      <div id="customName"></div>
+    </div>
+  </div>
+
+  <!-- Tone & Mix -->
+  <div class="panel">
+    <div class="ptitle">Tone & Mix</div>
+    <div class="srow">
+      <label>Volume</label>
+      <input type="range" id="vol" min="0" max="200" value="100" step="1" oninput="onVol(this)">
+      <div class="sval" id="volv">100%</div>
+    </div>
+    <div class="divider"><span>EQ</span></div>
+    <div class="srow">
+      <label>Bass</label>
+      <input type="range" id="bass" min="-15" max="15" value="0" step="1" oninput="onEQ('bass',this)">
+      <div class="sval" id="bassv">0 dB</div>
+    </div>
+    <div class="srow">
+      <label>Mid</label>
+      <input type="range" id="mid" min="-15" max="15" value="0" step="1" oninput="onEQ('mid',this)">
+      <div class="sval" id="midv">0 dB</div>
+    </div>
+    <div class="srow">
+      <label>Treble</label>
+      <input type="range" id="treb" min="-15" max="15" value="0" step="1" oninput="onEQ('treb',this)">
+      <div class="sval" id="trebv">0 dB</div>
+    </div>
+    <div class="divider"><span>Playback</span></div>
+    <div class="srow">
+      <label>Speed</label>
+      <input type="range" id="spd" min="25" max="200" value="100" step="5" oninput="onSpeed(this)">
+      <div class="sval" id="spdv">1.00×</div>
+    </div>
+  </div>
+</div>
+
+<div class="lbl">02 — Preview & Export</div>
+<div class="preview-wrap">
+  <div class="canvas-box" id="cbox">
+    <div class="canvas-empty" id="cempty">Load two videos above to begin.<br>Preview plays in this window.</div>
+    <canvas id="mc"></canvas>
+  </div>
+
+  <div class="prog-wrap" id="progwrap">
+    <div class="prog-track"><div class="prog-fill" id="progfill"></div></div>
+    <div class="prog-label" id="proglbl"></div>
+  </div>
+
+  <div class="status">
+    <div class="sdot2" id="sdot"></div>
+    <span id="stxt">Load two videos to get started</span>
+  </div>
+
+  <div class="btns">
+    <button class="btn btn-p" id="bprev" onclick="doPreview()" disabled>▶ Preview</button>
+    <button class="btn btn-ok" id="bexp" onclick="doExport()" disabled>⬇ Export Video</button>
+    <button class="btn btn-err" id="bstop" onclick="doStop()">■ Stop</button>
+  </div>
+</div>
+
+</main>
+<script>
+// ── State ──────────────────────────────────────────────────
+let AC = null, bass_f, mid_f, treb_f, gain_n, stream_dest;
+let src1 = null, src2 = null, customSrc = null, customBuf = null;
+let audioSrc = 'v1';
+let running = false, rafId = null;
+let recorder = null, chunks = [];
+
+const v1 = document.getElementById('v1');
+const v2 = document.getElementById('v2');
+const mc = document.getElementById('mc');
+const cx = mc.getContext('2d');
+
+let timelineOrder = [1, 2];
+
+function swapOrder() {
+  timelineOrder.reverse();
+  document.getElementById('z' + timelineOrder[0]).style.order = 1;
+  document.getElementById('z' + timelineOrder[1]).style.order = 3;
+}
+
+// ── File Inputs ─────────────────────────────────────────────
+document.getElementById('f1').onchange = e => loadVid(e.target.files[0], 1);
+document.getElementById('f2').onchange = e => loadVid(e.target.files[0], 2);
+document.getElementById('fa').onchange = e => loadCustomAudio(e.target.files[0]);
+
+// Drag & Drop
+[['z1',1],['z2',2]].forEach(([id,n]) => {
+  const z = document.getElementById(id);
+  z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('over'); });
+  z.addEventListener('dragleave', () => z.classList.remove('over'));
+  z.addEventListener('drop', e => {
+    e.preventDefault(); z.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('video/')) loadVid(f, n);
+  });
+});
+
+function fmtDur(s) { return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+function fmtSz(b)  { return b > 1e6 ? (b/1e6).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB'; }
+
+function loadVid(file, n) {
+  if (!file) return;
+  const vid = n===1 ? v1 : v2;
+  const url = URL.createObjectURL(file);
+  vid.src = url;
+  vid.onloadedmetadata = () => {
+    const z = document.getElementById('z'+n);
+    const info = document.getElementById('i'+n);
+    z.classList.add('loaded');
+    info.innerHTML = `<span style="color:var(--cyan)">${file.name}</span><br>${vid.videoWidth}×${vid.videoHeight} · ${fmtDur(vid.duration)} · ${fmtSz(file.size)}`;
+    
+    // Setup trim sliders
+    const sInp = document.getElementById('start'+n);
+    const eInp = document.getElementById('end'+n);
+    sInp.max = vid.duration;
+    eInp.max = vid.duration;
+    sInp.value = 0;
+    eInp.value = vid.duration;
+    document.getElementById('start'+n+'v').textContent = '0.0s';
+    document.getElementById('end'+n+'v').textContent = vid.duration.toFixed(1)+'s';
+    
+    vid.currentTime = 0.5;
+    checkReady();
+  };
+}
+
+function onTrim(n) {
+  const sInp = document.getElementById('start'+n);
+  const eInp = document.getElementById('end'+n);
+  let s = parseFloat(sInp.value);
+  let e = parseFloat(eInp.value);
+  if (s >= e - 0.1) {
+    if (document.activeElement === sInp) { e = s + 0.1; eInp.value = e; }
+    else { s = e - 0.1; sInp.value = s; }
+  }
+  document.getElementById('start'+n+'v').textContent = s.toFixed(1)+'s';
+  document.getElementById('end'+n+'v').textContent = e.toFixed(1)+'s';
+  
+  const vid = n===1 ? v1 : v2;
+  vid.currentTime = document.activeElement === sInp ? s : e;
+}
+
+async function loadCustomAudio(file) {
+  if (!file) return;
+  document.getElementById('customName').textContent = file.name;
+  initAC();
+  const ab = await file.arrayBuffer();
+  try { customBuf = await AC.decodeAudioData(ab); setStatus('Custom audio ready'); }
+  catch(e) { alert('Could not decode audio. Try MP3 or AAC.'); }
+}
+
+function checkReady() {
+  const ok = v1.readyState >= 1 && v2.readyState >= 1;
+  document.getElementById('bprev').disabled = !ok;
+  document.getElementById('bexp').disabled = !ok;
+  if (ok) {
+    document.getElementById('cempty').style.display = 'none';
+    mc.style.display = 'block';
+    
+    // Only set it the first time so we have a constant size
+    if (mc.width === 300) {
+      mc.width = v1.videoWidth || 640;
+      mc.height = v1.videoHeight || 360;
+      cx.drawImage(v1, 0, 0, mc.width, mc.height);
+    }
+    setStatus('Ready — press Preview or Export');
+  }
+}
+
+// ── Audio Engine ────────────────────────────────────────────
+function initAC() {
+  if (AC) return;
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+
+  bass_f = AC.createBiquadFilter(); bass_f.type='lowshelf';  bass_f.frequency.value=200;
+  mid_f  = AC.createBiquadFilter(); mid_f.type ='peaking';   mid_f.frequency.value=1000; mid_f.Q.value=1;
+  treb_f = AC.createBiquadFilter(); treb_f.type='highshelf'; treb_f.frequency.value=3000;
+  gain_n = AC.createGain();         gain_n.gain.value=1;
+  stream_dest = AC.createMediaStreamDestination();
+
+  bass_f.connect(mid_f);
+  mid_f.connect(treb_f);
+  treb_f.connect(gain_n);
+  gain_n.connect(AC.destination);
+  gain_n.connect(stream_dest);
+
+  bass_f.gain.value = parseInt(document.getElementById('bass').value);
+  mid_f.gain.value  = parseInt(document.getElementById('mid').value);
+  treb_f.gain.value = parseInt(document.getElementById('treb').value);
+  gain_n.gain.value = parseInt(document.getElementById('vol').value) / 100;
+}
+
+function ensureSrc(vid, which) {
+  if (which===1 && !src1 && vid.src) { src1 = AC.createMediaElementSource(vid); }
+  if (which===2 && !src2 && vid.src) { src2 = AC.createMediaElementSource(vid); }
+}
+
+function disconnectAll() {
+  if (src1) try{ src1.disconnect(); }catch(e){}
+  if (src2) try{ src2.disconnect(); }catch(e){}
+  if (customSrc) try{ customSrc.stop(); customSrc.disconnect(); }catch(e){} customSrc=null;
+}
+
+function connectAudio(phase) {
+  disconnectAll();
+  if (audioSrc==='mute') return;
+  const spd = parseInt(document.getElementById('spd').value)/100;
+
+  if (audioSrc==='custom') {
+    if (!customBuf) return;
+    customSrc = AC.createBufferSource();
+    customSrc.buffer = customBuf;
+    customSrc.loop = true;
+    customSrc.playbackRate.value = spd;
+    customSrc.connect(bass_f);
+    customSrc.start();
+    return;
+  }
+  if (audioSrc==='v1' || (audioSrc==='both' && phase==='p1')) {
+    ensureSrc(v1,1); if(src1) src1.connect(bass_f);
+  }
+  if (audioSrc==='v2' || (audioSrc==='both' && phase==='p2')) {
+    ensureSrc(v2,2); if(src2) src2.connect(bass_f);
+  }
+}
+
+// ── Slider Handlers ─────────────────────────────────────────
+function onEQ(b, el) {
+  const v=parseInt(el.value);
+  document.getElementById(b+'v').textContent=(v>=0?'+':'')+v+' dB';
+  if (!AC) return;
+  if(b==='bass') bass_f.gain.value=v;
+  else if(b==='mid') mid_f.gain.value=v;
+  else if(b==='treb') treb_f.gain.value=v;
+}
+function onVol(el) {
+  const v=parseInt(el.value);
+  document.getElementById('volv').textContent=v+'%';
+  if(gain_n) gain_n.gain.value=v/100;
+}
+function onSpeed(el) {
+  const v=parseInt(el.value), spd=v/100;
+  document.getElementById('spdv').textContent=spd.toFixed(2)+'×';
+  v1.playbackRate=spd; v2.playbackRate=spd;
+  if(customSrc) customSrc.playbackRate.value=spd;
+}
+function setAudioSrc(val, el) {
+  audioSrc=val;
+  document.querySelectorAll('.src-opt').forEach(o=>o.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('caBtn').classList.toggle('show', val==='custom');
+}
+
+// ── Render Loop ──────────────────────────────────────────────
+function startRender(vid) {
+  const draw = () => {
+    if (!running) return;
+    cx.drawImage(vid, 0, 0, mc.width, mc.height);
+    rafId = requestAnimationFrame(draw);
+  };
+  rafId = requestAnimationFrame(draw);
+}
+function stopRender() { if(rafId){cancelAnimationFrame(rafId);rafId=null;} }
+
+// ── UI helpers ───────────────────────────────────────────────
+function setStatus(msg, mode) {
+  document.getElementById('stxt').textContent = msg;
+  const d = document.getElementById('sdot');
+  d.className = 'sdot2' + (mode==='live' ? ' live' : mode==='rec' ? ' rec' : '');
+}
+function setProgress(pct, label) {
+  document.getElementById('progwrap').style.display='';
+  document.getElementById('progfill').style.width = pct+'%';
+  document.getElementById('proglbl').textContent = label||'';
+}
+function setBtns(isRunning) {
+  document.getElementById('bprev').disabled = isRunning || v1.readyState<1 || v2.readyState<1;
+  document.getElementById('bexp').disabled  = isRunning || v1.readyState<1 || v2.readyState<1;
+  document.getElementById('bstop').style.display = isRunning ? 'inline-flex' : 'none';
+}
+
+// ── Playback engine ──────────────────────────────────────────
+function waitForEnd(vid, endT) {
+  return new Promise(res => {
+    const check = () => {
+      if (!running) { res(); return; }
+      if (vid.currentTime >= endT || vid.ended) { res(); return; }
+      requestAnimationFrame(check);
+    };
+    check();
+  });
+}
+
+async function runSequence(withRecorder) {
+  initAC();
+  if (AC.state==='suspended') await AC.resume();
+
+  running = true;
+  setBtns(true);
+  
+  // Unlock videos by playing briefly (in the click handler scope) so they are allowed to play later
+  v1.muted = true; v2.muted = true;
+  await Promise.all([
+    v1.play().catch(()=>{}),
+    v2.play().catch(()=>{})
+  ]);
+  v1.pause(); v2.pause();
+  v1.muted = false; v2.muted = false;
+
+  const spd = parseInt(document.getElementById('spd').value)/100;
+
+  const firstVid = timelineOrder[0] === 1 ? v1 : v2;
+  const renderW = firstVid.videoWidth  || 640;
+  const renderH = firstVid.videoHeight || 360;
+  mc.width  = renderW;
+  mc.height = renderH;
+
+  for (let i = 0; i < timelineOrder.length; i++) {
+    if (!running) break;
+    const vidId = timelineOrder[i];
+    const vid = vidId === 1 ? v1 : v2;
+
+    const s = parseFloat(document.getElementById('start' + vidId).value);
+    const e = parseFloat(document.getElementById('end' + vidId).value);
+
+    vid.currentTime = s; 
+    vid.playbackRate = spd;
+    connectAudio('p' + vidId);
+    startRender(vid);
+    setStatus('Playing Video ' + vidId + '…', withRecorder?'rec':'live');
+    setProgress(i * 50, 'Video ' + (i+1) + ' of 2');
+    
+    await vid.play().catch(e => console.error(e));
+    await waitForEnd(vid, e);
+    vid.pause(); stopRender();
+  }
+
+  if (!running) return;
+  setProgress(100, 'Done');
+  running = false;
+  disconnectAll();
+  setBtns(false);
+}
+
+// ── Preview ──────────────────────────────────────────────────
+async function doPreview() {
+  await runSequence(false);
+  setStatus('Preview complete', '');
+}
+
+let exportMime = '';
+let exportExt = 'webm';
+
+// ── Export ───────────────────────────────────────────────────
+async function doExport() {
+  initAC();
+  if (AC.state==='suspended') await AC.resume();
+  chunks = [];
+
+  const canvasStream = mc.captureStream(30);
+  if (audioSrc !== 'mute') {
+    const aTrack = stream_dest.stream.getAudioTracks()[0];
+    if (aTrack) canvasStream.addTrack(aTrack);
+  }
+
+  const mimeTypes = [
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=h264,opus',
+    'video/webm;codecs=vp9,opus',
+    'video/webm'
+  ];
+  exportMime = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+  exportExt = exportMime.includes('mp4') ? 'mp4' : 'webm';
+
+  recorder = new MediaRecorder(canvasStream, exportMime ? {mimeType:exportMime} : {});
+  recorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
+  recorder.onstop = saveExport;
+  recorder.start(100);
+
+  await runSequence(true);
+
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+  setStatus('Saving file…', '');
+}
+
+function saveExport() {
+  const blob = new Blob(chunks, {type: exportMime || 'video/webm'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `merged_video.${exportExt}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  chunks = [];
+  setStatus(`Exported! File saved as merged_video.${exportExt}`, '');
+  document.getElementById('progwrap').style.display='none';
+}
+
+// ── Stop ─────────────────────────────────────────────────────
+function doStop() {
+  running = false;
+  stopRender();
+  v1.pause(); v2.pause();
+  disconnectAll();
+  if (recorder && recorder.state!=='inactive') recorder.stop();
+  recorder = null; chunks = [];
+  setBtns(false);
+  setStatus('Stopped');
+  document.getElementById('progwrap').style.display='none';
+}
+</script>
+</body>
+</html>
