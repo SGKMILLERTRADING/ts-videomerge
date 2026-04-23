@@ -280,6 +280,14 @@ function fmtDur(s) {
   return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; 
 }
 
+// Hidden video container attached to DOM so browsers load metadata
+if (!document.getElementById('_vidPool')) {
+  const pool = document.createElement('div');
+  pool.id = '_vidPool';
+  pool.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;top:-9999px;overflow:hidden';
+  document.body.appendChild(pool);
+}
+
 function addClip(file) {
   if (!file) return;
   const id = 'c_' + Date.now() + Math.floor(Math.random()*1000);
@@ -288,22 +296,29 @@ function addClip(file) {
   vid.src = url;
   vid.playsInline = true;
   vid.preload = 'metadata';
-  
+  vid.muted = true;
+
+  // Attach to DOM — required for onloadedmetadata to fire in Chrome/Firefox
+  document.getElementById('_vidPool').appendChild(vid);
+
   const clip = { id, file, url, vid, start: 0, end: 0, duration: 0, node: null };
   clips.push(clip);
-  
-  vid.onloadedmetadata = () => {
+
+  const onMeta = () => {
     clip.duration = vid.duration || 0;
-    if (clip.end === 0) clip.end = clip.duration;
-    vid.currentTime = 0.5; // for thumbnail
+    clip.end = clip.duration;
     renderTimeline();
     checkReady();
   };
-  
-  // Force the browser to load metadata even if the element is not in the DOM
+
+  if (vid.readyState >= 1) {
+    onMeta();
+  } else {
+    vid.addEventListener('loadedmetadata', onMeta, { once: true });
+    setTimeout(() => { if (clip.duration === 0 && vid.duration > 0) onMeta(); }, 2000);
+  }
+
   vid.load();
-  
-  // Render an empty state immediately so the user sees the box
   renderTimeline();
   checkReady();
 }
